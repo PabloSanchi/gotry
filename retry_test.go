@@ -1,0 +1,106 @@
+package gotry
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+)
+
+// TestRetryWithSuccessOnFirstRequest tests the retry mechanism with a server that always returns a 200 status code.
+func TestRetryWithSuccessOnFirstRequest(t *testing.T) {
+	type ResponseType struct {
+		Content string `json:"content"`
+		Status  int    `json:"status"`
+	}
+
+	expectedResponse := ResponseType{Content: "success"}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"content":"success"}`))
+	}))
+	defer server.Close()
+
+	var retryCount uint = 0
+	var expectedRetries uint = 0
+
+	sendRequest := func() (*http.Response, error) {
+		return http.Get(server.URL + "/success")
+	}
+
+	body, err := Retry(
+		sendRequest,
+		WithOnRetry(func(n uint, err error) {
+			retryCount = n
+			log.Printf("Retrying request after error: %v", err)
+		}),
+	)
+
+	if err != nil {
+		t.Errorf("Expected nil, got error: %v", err)
+	}
+
+	if retryCount != expectedRetries {
+		t.Errorf("Expected 0 retries, but got %d", retryCount)
+	}
+
+	var response ResponseType
+	if err := json.Unmarshal(body, &response); err != nil {
+		t.Errorf("Failed to unmarshal response body: %v", err)
+	}
+
+	if response != expectedResponse {
+		t.Errorf("Expected response %v, but got %v", expectedResponse, response)
+	}
+}
+
+// TestRetryWithNoSuccessStatusOnAnyRequest tests the retry mechanism with a server that always returns a 429 status code.
+func TestRetryWithNoSuccessStatusOnAnyRequest(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	var backoffTime = 2 * time.Second
+	var retryCount uint = 0
+	var expectedRetries uint = 3
+
+	sendRequest := func() (*http.Response, error) {
+		return http.Get(server.URL + "/notfound")
+	}
+
+	startTime := time.Now()
+
+	body, err := Retry(
+		sendRequest,
+		WithBackoff(backoffTime),
+		WithOnRetry(func(n uint, err error) {
+			retryCount = n
+			log.Printf("Retrying request after error: %v", err)
+		}),
+	)
+
+	endTime := time.Now()
+
+	elapsedTime := endTime.Sub(startTime)
+	expectedMinimumTime := backoffTime * time.Duration(expectedRetries)
+
+	if err == nil {
+		t.Errorf("Expected error, got nil")
+	}
+
+	if string(body) != "" {
+		t.Errorf("Expected empty body, but got %s", string(body))
+	}
+
+	if retryCount != expectedRetries {
+		t.Errorf("Expected 3 retries, but got %d", retryCount)
+	}
+
+	if elapsedTime < expectedMinimumTime {
+		t.Errorf("Expected minimum time of %v, but got %v", expectedMinimumTime, elapsedTime)
+	}
+}
