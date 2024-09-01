@@ -58,7 +58,7 @@ func main() {
 - `WithRetryIf(RetryIfFunc)`: Specify the condition under which retries should be attempted.
 
 ## License
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License. See the [LICENSE](LICENSE) file for details.
 
 ## 
 
