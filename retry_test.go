@@ -31,7 +31,7 @@ func TestRetryWithSuccessOnFirstRequest(t *testing.T) {
 		return http.Get(server.URL + "/success")
 	}
 
-	body, err := Retry(
+	resp, err := Retry(
 		sendRequest,
 		WithOnRetry(func(n uint, err error) {
 			retryCount = n
@@ -47,8 +47,9 @@ func TestRetryWithSuccessOnFirstRequest(t *testing.T) {
 		t.Errorf("Expected 0 retries, but got %d", retryCount)
 	}
 
+	defer resp.Body.Close()
 	var response ResponseType
-	if err := json.Unmarshal(body, &response); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		t.Errorf("Failed to unmarshal response body: %v", err)
 	}
 
@@ -74,7 +75,7 @@ func TestRetryWithNoSuccessStatusOnAnyRequest(t *testing.T) {
 
 	startTime := time.Now()
 
-	body, err := Retry(
+	resp, err := Retry(
 		sendRequest,
 		WithBackoff(backoffTime),
 		WithOnRetry(func(n uint, err error) {
@@ -92,8 +93,9 @@ func TestRetryWithNoSuccessStatusOnAnyRequest(t *testing.T) {
 		t.Errorf("Expected error, got nil")
 	}
 
-	if string(body) != "" {
-		t.Errorf("Expected empty body, but got %s", string(body))
+	if resp != nil {
+		defer resp.Body.Close()
+		t.Errorf("Expected nil response, got %v", resp.Body)
 	}
 
 	if retryCount != expectedRetries {
