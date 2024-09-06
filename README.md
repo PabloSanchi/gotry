@@ -32,7 +32,7 @@ func main() {
         return http.Get("https://example.com")
     }
 
-    responseBody, err := gotry.Retry(retryableFunc,
+    resp, err := gotry.Retry(retryableFunc,
         gotry.WithRetries(5),
         gotry.WithBackoff(2*time.Second),
         gotry.WithMaxJitter(500*time.Millisecond),
@@ -46,7 +46,12 @@ func main() {
         return
     }
 
-    fmt.Printf("Response: %s\n", string(responseBody))
+    // we assume there is a body from this request;
+    defer resp.Body.Close()
+    body := resp.Body
+    
+    // do something with the body
+    // ...
 }
 ```
 
