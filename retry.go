@@ -7,18 +7,6 @@ import (
 	"time"
 )
 
-// Timer interface to abstract time-based operations for retries.
-type Timer interface {
-	After(time.Duration) <-chan time.Time
-}
-
-// timerImpl implements the Timer interface using time.After.
-type timerImpl struct{}
-
-func (t timerImpl) After(d time.Duration) <-chan time.Time {
-	return time.After(d)
-}
-
 // RetryableFuncWithResponse represents a function that returns an HTTP response or an error.
 type RetryableFuncWithResponse func() (*http.Response, error)
 
@@ -61,7 +49,7 @@ func Retry(retryableFunc RetryableFuncWithResponse, options ...RetryOption) (*ht
 		}
 
 		select {
-		case <-opts.timer.After(backoffDuration):
+		case <-time.After(backoffDuration):
 		case <-opts.context.Done():
 			return nil, opts.context.Err()
 		}

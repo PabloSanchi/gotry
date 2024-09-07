@@ -18,7 +18,6 @@ type RetryConfig struct {
 	maxJitter time.Duration
 	onRetry   OnRetryFunc
 	retryIf   RetryIfFunc
-	timer     Timer
 	context   context.Context
 }
 
@@ -33,7 +32,6 @@ func newDefaultRetryConfig() *RetryConfig {
 		maxJitter: 0 * time.Second,                            // no jitter by default
 		onRetry:   func(n uint, err error) {},                 // no-op onRetry by default
 		retryIf:   func(err error) bool { return err != nil }, // retry on any error by default
-		timer:     &timerImpl{},
 		context:   context.Background(),
 	}
 }
