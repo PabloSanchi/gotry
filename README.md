@@ -1,3 +1,9 @@
+<p align="center">
+<img src="https://img.shields.io/github/go-mod/go-version/PabloSanchi/gotry" alt="Go Version">
+<a href="https://pkg.go.dev/github.com/PabloSanchi/gotry"><img src="https://pkg.go.dev/badge/github.com/PabloSanchi/gotry" alt="PkgGoDev"></a>
+<a href="https://opensource.org/license/apache-2-0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
+</p>
+
 # GoTry - Simple Retry Module for Go
 
 GoTry is a lightweight, configurable retry module for Go, designed to make retrying operations like HTTP requests easier. It allows developers to specify custom retry logic, backoff strategies, and error handling in a simple and flexible way.
