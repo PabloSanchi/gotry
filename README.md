@@ -70,7 +70,3 @@ func main() {
 
 ## License
 This project is licensed under the Apache License. See the [LICENSE](LICENSE) file for details.
-
-## 
-
-Simplification of the Avast [retry-go](https://github.com/avast/retry-go) module
