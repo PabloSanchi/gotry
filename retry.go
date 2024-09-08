@@ -56,22 +56,6 @@ func Retry(retryableFunc RetryableFuncWithResponse, options ...RetryOption) (*ht
 	return nil, lastErr
 }
 
-// getBackoffDuration calculates the backoff duration based on the retry configuration and attempt number.
-func getBackoffDuration(config *RetryConfig, attempt uint) time.Duration {
-	backoffDuration := config.backoffStrategy(config.backoff, attempt)
-
-	if config.maxJitter > 0 {
-		jitter := time.Duration(rand.Int63n(int64(config.maxJitter)))
-		backoffDuration += jitter
-	}
-
-	if config.backoffLimit > 0 && backoffDuration > config.backoffLimit {
-		backoffDuration = config.backoffLimit
-	}
-
-	return backoffDuration
-}
-
 // WithRetries sets the number of retries for the retry configuration.
 func WithRetries(retries uint) RetryOption {
 	return func(cfg *RetryConfig) {
@@ -144,4 +128,20 @@ func WithCustomBackoff(strategy func(base time.Duration, n uint) time.Duration) 
 	return func(cfg *RetryConfig) {
 		cfg.backoffStrategy = strategy
 	}
+}
+
+// getBackoffDuration calculates the backoff duration based on the retry configuration and attempt number.
+func getBackoffDuration(config *RetryConfig, attempt uint) time.Duration {
+	backoffDuration := config.backoffStrategy(config.backoff, attempt)
+
+	if config.maxJitter > 0 {
+		jitter := time.Duration(rand.Int63n(int64(config.maxJitter)))
+		backoffDuration += jitter
+	}
+
+	if config.backoffLimit > 0 && backoffDuration > config.backoffLimit {
+		backoffDuration = config.backoffLimit
+	}
+
+	return backoffDuration
 }
