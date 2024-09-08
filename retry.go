@@ -1,6 +1,7 @@
 package gotry
 
 import (
+	"context"
 	"errors"
 	"math/rand"
 	"net/http"
@@ -40,22 +41,35 @@ func Retry(retryableFunc RetryableFuncWithResponse, options ...RetryOption) (*ht
 		}
 
 		lastErr = err
-		opts.onRetry(n+1, err)
 
-		backoffDuration := opts.backoff
-		if opts.maxJitter > 0 {
-			jitter := time.Duration(rand.Int63n(int64(opts.maxJitter)))
-			backoffDuration += jitter
-		}
+		backoffDuration := getBackoffDuration(opts, n+1)
 
 		select {
 		case <-time.After(backoffDuration):
 		case <-opts.context.Done():
 			return nil, opts.context.Err()
 		}
+
+		opts.onRetry(n+1, err)
 	}
 
 	return nil, lastErr
+}
+
+// getBackoffDuration calculates the backoff duration based on the retry configuration and attempt number.
+func getBackoffDuration(config *RetryConfig, attempt uint) time.Duration {
+	backoffDuration := config.backoffStrategy(config.backoff, attempt)
+
+	if config.maxJitter > 0 {
+		jitter := time.Duration(rand.Int63n(int64(config.maxJitter)))
+		backoffDuration += jitter
+	}
+
+	if config.backoffLimit > 0 && backoffDuration > config.backoffLimit {
+		backoffDuration = config.backoffLimit
+	}
+
+	return backoffDuration
 }
 
 // WithRetries sets the number of retries for the retry configuration.
@@ -69,6 +83,13 @@ func WithRetries(retries uint) RetryOption {
 func WithBackoff(backoff time.Duration) RetryOption {
 	return func(cfg *RetryConfig) {
 		cfg.backoff = backoff
+	}
+}
+
+// WithBackoffLimit sets the maximum backoff duration allowed for the retry configuration.
+func WithBackoffLimit(backoffLimit time.Duration) RetryOption {
+	return func(cfg *RetryConfig) {
+		cfg.backoffLimit = backoffLimit
 	}
 }
 
@@ -90,5 +111,37 @@ func WithOnRetry(onRetry OnRetryFunc) RetryOption {
 func WithRetryIf(retryIf RetryIfFunc) RetryOption {
 	return func(cfg *RetryConfig) {
 		cfg.retryIf = retryIf
+	}
+}
+
+// WithContext sets the context for the retry configuration.
+func WithContext(ctx context.Context) RetryOption {
+	return func(cfg *RetryConfig) {
+		cfg.context = ctx
+	}
+}
+
+// WithLinearBackoff sets the backoff duration between retries to a linear duration.
+func WithLinearBackoff() RetryOption {
+	return func(cfg *RetryConfig) {
+		cfg.backoffStrategy = func(base time.Duration, n uint) time.Duration {
+			return base * time.Duration(n)
+		}
+	}
+}
+
+// WithExponentialBackoff sets the backoff duration between retries to an exponential duration.
+func WithExponentialBackoff() RetryOption {
+	return func(cfg *RetryConfig) {
+		cfg.backoffStrategy = func(base time.Duration, n uint) time.Duration {
+			return base * time.Duration(1<<n)
+		}
+	}
+}
+
+// WithCustomBackoff sets a custom backoff strategy for the retry configuration.
+func WithCustomBackoff(strategy func(base time.Duration, n uint) time.Duration) RetryOption {
+	return func(cfg *RetryConfig) {
+		cfg.backoffStrategy = strategy
 	}
 }
